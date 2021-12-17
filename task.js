@@ -6,18 +6,31 @@ let data = []
 
 // this is the helper function that I am taking here for saving the tasks
 function saveData() {
-    fs.writeFileSync('task.txt', JSON.stringify(data))
+    // I am taking the data and converting it to a string
+    let dataString = ''
+    data.forEach((task, i) => {
+        if(i != data.length - 1) {
+            dataString += `${task.priority} ${task.task}\n`
+        }else{
+            dataString += `${task.priority} ${task.task}`
+        }
+    })
+    // I am writing the data to the file
+    fs.writeFileSync('task.txt', dataString)
 }
 
 // this is the data loader function that loads the tasks if the task.txt file exists
 // otherwise it giver the data an empty stack
 function loadData() {
     if (fs.existsSync('task.txt')) {
-        try {
-            data = JSON.parse(fs.readFileSync('task.txt'))
-        } catch (e) {
-            data = []
-        }
+        data = []
+        
+        fileData = fs.readFileSync('task.txt').toString().split('\n')
+
+        // I am trying to convert every line of the file to a JSON object because it is easier to work with
+        fileData.forEach((task, i) => {
+            data.push({"task" :task.substring(task.indexOf(' ') + 1).replace(/\r?\n|\r/g, ""), "priority": parseInt(task.substring(0, task.indexOf(' ')))})
+        })
     } else {
         data = []
     }
@@ -26,7 +39,6 @@ function loadData() {
 
 // Initial Loading of the data
 loadData()
-
 
 let usage = `Usage :-
 $ ./task add 2 hello world    # Add a new item with priority 2 and text "hello world" to the list
@@ -58,11 +70,10 @@ switch (command) {
         break
     case 'ls':
         if (data.length) {
+            console.log(data)
             data.sort((a, b) => a.priority - b.priority)
             data.forEach((task, index) => {
-                if (!task.complete) {
-                    console.log(`${index + 1}. ${task.task} [${task.priority}]`)
-                }
+                console.log(`${index + 1}. ${task.task} [${task.priority}]`)
             })
         }else{
             console.log('There are no pending tasks!')
