@@ -1,44 +1,12 @@
-const fs = require('fs')
-
-// Here I am taking an Empty Stack for pushing and popping the tasks and write to the file
-let data = []
-
-
-// this is the helper function that I am taking here for saving the tasks
-function saveData() {
-    // I am taking the data and converting it to a string
-    let dataString = ''
-    data.forEach((task, i) => {
-        if(i != data.length - 1) {
-            dataString += `${task.priority} ${task.task}\n`
-        }else{
-            dataString += `${task.priority} ${task.task}`
-        }
-    })
-    // I am writing the data to the file
-    fs.writeFileSync('task.txt', dataString)
-}
-
-// this is the data loader function that loads the tasks if the task.txt file exists
-// otherwise it giver the data an empty stack
-function loadData() {
-    if (fs.existsSync('task.txt')) {
-        data = []
-        
-        fileData = fs.readFileSync('task.txt').toString().split('\n')
-
-        // I am trying to convert every line of the file to a JSON object because it is easier to work with
-        fileData.forEach((task, i) => {
-            data.push({"task" :task.substring(task.indexOf(' ') + 1).replace(/\r?\n|\r/g, ""), "priority": parseInt(task.substring(0, task.indexOf(' ')))})
-        })
-    } else {
-        data = []
-    }
-}
+const {saveCompletedData, saveTaskData, loadTaskData, loadCompletedData} = require('./helpers')
 
 
 // Initial Loading of the data
-loadData()
+// This is the array/stack of tasks
+let data = loadTaskData()
+// This is the array/stack of completed tasks
+let completed = loadCompletedData()
+
 
 let usage = `Usage :-
 $ ./task add 2 hello world    # Add a new item with priority 2 and text "hello world" to the list
@@ -48,6 +16,7 @@ $ ./task done INDEX           # Mark the incomplete item with the given index as
 $ ./task help                 # Show usage
 $ ./task report               # Statistics`
 
+// storing the command line arguments
 const [_, __, command, priority, task] = process.argv
 
 switch (command) {
@@ -56,6 +25,7 @@ switch (command) {
         break
 
     case 'add':
+        // if the priority or task or both are not provided
         if (!priority || !task) {
             console.log('Error: Missing tasks string. Nothing added!')
         } else {
@@ -65,20 +35,70 @@ switch (command) {
                 complete: false
             })
             console.log(`Added task: "${task}" with priority ${priority}`)
-            saveData()
+            saveTaskData(data)
         }
         break
     case 'ls':
+        // simply list the tasks in order of priority
+        // tasks are already sorted by priority from loadTaskData()
         if (data.length) {
-            console.log(data)
-            data.sort((a, b) => a.priority - b.priority)
             data.forEach((task, index) => {
                 console.log(`${index + 1}. ${task.task} [${task.priority}]`)
             })
-        }else{
+        } else {
             console.log('There are no pending tasks!')
         }
         break
+    case 'del':
+        // if the index argument is not provided
+        if (!priority) {
+            console.log('Error: Missing NUMBER for deleting tasks.')
+        } else {
+            // actually here priority is the index of task to be deleted that is the second argument in case of del command
+            // given by the user, so we need to subtract 1 from it to get the index of the task in the data array
+            let index = parseInt(priority) - 1
+            if (data[index]) {
+                let index = parseInt(priority) - 1
+                data.splice(index, 1)
+                console.log(`Deleted task #${priority}`)
+                saveTaskData(data)
+            } else {
+                console.log(`Error: task with index #${priority} does not exist. Nothing deleted.`)
+            }
+        }
+        break
+    case 'done':
+        if (!priority) {
+            console.log('Error: Missing NUMBER for marking tasks as done.')
+        } else {
+            let index = parseInt(priority) - 1
+            if (data[index]) {
+                let index = parseInt(priority) - 1
+                completed.push(data[index].task)
+                data.splice(index, 1)
+                console.log(`Marked item as done.`)
+                saveTaskData(data)
+                saveCompletedData(completed)
+            } else {
+                console.log(`Error: no incomplete item with index #${priority} exists.`)
+            }
+        }
+        break
+    case 'report':
+        console.log(`Pending : ${data.length}`)
+        if (data.length) {
+            data.forEach((task, index) => {
+                console.log(`${index + 1}. ${task.task} [${task.priority}]`)
+            })
+        }
+        console.log(`\nCompleted : ${completed.length}`)
+        if (completed.length) {
+            completed.forEach((task, index) => {
+                console.log(`${index + 1}. ${task}`)
+            })
+        }
+        break
+
     default:
         console.log(usage)
 }
